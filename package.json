@@ -1,0 +1,39 @@
+{
+  "name": "validator-refuel",
+  "version": "0.0.1",
+  "description": "Service to top up Avalanche L1 validator balances",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "pnpm tsc",
+    "start": "node dist/server.js",
+    "dev": "pnpm tsx --watch src/server.ts",
+    "local": "pnpm tsx src/local.ts"
+  },
+  "keywords": [
+    "beam",
+    "avalanche",
+    "l1"
+  ],
+  "author": "xtools-at <https://github.com/xtools-at>",
+  "license": "AGPL-3.0-or-later",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "dependencies": {
+    "@avalabs/avalanchejs": "^5.0.0",
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@onbeam/biome-config": "^0.0.4",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.10",
+    "@types/node-cron": "^3.0.11",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
