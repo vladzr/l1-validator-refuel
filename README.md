@@ -46,3 +46,7 @@ BLACKLISTED_VALIDATOR_IDS=NodeID-123,NodeID-234 # comma-separated list of node I
 FAUCET_BALANCE_ERROR=1 # throw error if balance is less than 1 AVAX
 FAUCET_BALANCE_WARN=10 # log a warning if the faucet holds less then 10 AVAX
 ```
+
+## Customizations
+
+This service utilizes a custom API endpoint to fetch aggregated validator uptime information (configured in `UPTIME_API`). When forking this service, you'd need to provide your own custom endpoint implementation to query uptime from multiple nodes [via RPC](https://build.avax.network/docs/api-reference/subnet-evm-api#validatorsgetcurrentvalidators) and process/merge the data.
