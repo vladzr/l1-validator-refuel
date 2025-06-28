@@ -38,6 +38,7 @@ UPTIME_API=https://testnet.nodes.onbeam.com/api/uptime # uptime api endpoint of 
 BALANCE_THRESHOLD=0.1 # minimum validator P-chain balance in AVAX to trigger refuel
 REFILL_AMOUNT=0.2 # amount of AVAX to refuel when triggered
 UPTIME_THRESHOLD=80 # minimum validator uptime % to be considered for refuel
+USE_UPTIME_FILTER=true # use validator uptime filter
 
 DELAY_PCHAIN_TX=10000 # timeout in ms after every P-Chain tx
 DELAY_VALIDATOR=1000 # timeout in ms after processing a validator

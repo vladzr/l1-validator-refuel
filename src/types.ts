@@ -10,6 +10,7 @@ export type ChainConfig = {
   blacklistedValidatorIds: string[];
   faucetBalanceThresholdWarn: number;
   faucetBalanceThresholdError: number;
+  useValidatorUptimeFilter: boolean;
 };
 
 export type ValidationInfo = {
