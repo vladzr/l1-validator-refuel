@@ -75,7 +75,10 @@ export const handleValidator = async (validation: ValidationInfo) => {
       `\nProcessing validator ${validator.nodeID} (validation ID ${validationID})...\n- balance: ${fromPChainWei(validator.balance)} AVAX.`,
     );
 
-    if (uptimePercentage < config.validatorUptimeThresholdPercent) {
+    if (
+      config.useValidatorUptimeFilter &&
+      uptimePercentage < config.validatorUptimeThresholdPercent
+    ) {
       console.info(
         `- skipping inactive validator ${nodeID}, uptime of ${uptimePercentage.toFixed(1)}% is < ${config.validatorUptimeThresholdPercent}%.`,
       );

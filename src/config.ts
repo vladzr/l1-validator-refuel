@@ -20,6 +20,7 @@ const beamMainnet: ChainConfig = {
   validatorBalanceTopUp: Number(process.env.REFILL_AMOUNT) || 0.2,
   validatorDelay: Number(process.env.DELAY_VALIDATOR) || 1000,
   validatorUptimeThresholdPercent: Number(process.env.UPTIME_THRESHOLD) || 80,
+  useValidatorUptimeFilter: process.env.USE_UPTIME_FILTER?.toLowerCase() !== 'false',
   blacklistedValidatorIds,
 
   faucetBalanceThresholdWarn: Number(process.env.FAUCET_BALANCE_WARN) || 10,
