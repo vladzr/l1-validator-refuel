@@ -1,0 +1,141 @@
+name: Validator Refuel
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * *'
+  push:
+    branches:
+      - main
+
+jobs:
+  refuel-testnet:
+    name: Testnet Refuel
+    runs-on: ubuntu-latest
+    environment: Testnet
+    timeout-minutes: 15
+
+    env:
+      CHAIN_ID: '13337'
+      DELAY_PCHAIN_TX: '5000'
+      DELAY_VALIDATOR: '1000'
+      BALANCE_THRESHOLD: '0.1'
+      REFILL_AMOUNT: '0.2'
+      UPTIME_THRESHOLD: '80'
+      USE_UPTIME_FILTER: 'true'
+      UPTIME_API: 'https://nodes.testnet.onbeam.com/api/uptime'
+      RPC_PCHAIN: ${{ secrets.RPC_PCHAIN }}
+      FAUCET_PK: ${{ secrets.FAUCET_PK }}
+      FAUCET_PCHAIN_ADDRESS: ${{ vars.FAUCET_PCHAIN_ADDRESS }}
+      NODE_ENV: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Cache PNPM store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Verify dependencies
+        run: pnpm list --dev
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Run testnet refuel
+        run: |
+          log_file="refuel-testnet-$(date +%Y%m%d-%H%M%S).log"
+          pnpm local 2>&1 | tee "$log_file"
+          echo "LOG_FILE=$log_file" >> $GITHUB_ENV
+
+      - name: Upload testnet log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: refuel-testnet-log
+          path: ${{ env.LOG_FILE }}
+          retention-days: 7
+
+  refuel-mainnet:
+    name: Mainnet Refuel
+    runs-on: ubuntu-latest
+    environment: Mainnet
+    timeout-minutes: 15
+
+    env:
+      CHAIN_ID: '4337'
+      DELAY_PCHAIN_TX: '5000'
+      BALANCE_THRESHOLD: '0.2'
+      REFILL_AMOUNT: '0.4'
+      UPTIME_THRESHOLD: '80'
+      USE_UPTIME_FILTER: 'false'
+      UPTIME_API: 'https://nodes.onbeam.com/api/uptime'
+      FAUCET_BALANCE_WARN: '250'
+      FAUCET_BALANCE_ERROR: '10'
+      RPC_PCHAIN: ${{ secrets.RPC_PCHAIN }}
+      FAUCET_PK: ${{ secrets.FAUCET_PK }}
+      FAUCET_PCHAIN_ADDRESS: ${{ vars.FAUCET_PCHAIN_ADDRESS }}
+      NODE_ENV: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Cache PNPM store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prod=false
+
+      - name: Verify dependencies
+        run: pnpm list --dev
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Run mainnet refuel
+        run: |
+          log_file="refuel-mainnet-$(date +%Y%m%d-%H%M%S).log"
+          pnpm local 2>&1 | tee "$log_file"
+          echo "LOG_FILE=$log_file" >> $GITHUB_ENV
+
+      - name: Upload mainnet log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: refuel-mainnet-log
+          path: ${{ env.LOG_FILE }}
+          retention-days: 7

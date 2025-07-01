@@ -8,7 +8,7 @@ let blacklistedValidatorIds: string[] = [];
 if (process.env.BLACKLISTED_VALIDATOR_IDS) {
   blacklistedValidatorIds = process.env.BLACKLISTED_VALIDATOR_IDS.split(
     ',',
-  ).map((id) => id.trim());
+  ).map((id: string) => id.trim());
 }
 
 const beamMainnet: ChainConfig = {
