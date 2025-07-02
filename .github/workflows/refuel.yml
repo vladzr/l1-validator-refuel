@@ -130,7 +130,7 @@ jobs:
                     },
                     {
                       "type": "mrkdwn",
-                      "text": "*Log Artifact:*\n-${{ env.LOG_FILE }} (download from run page)"
+                      "text": "*Log Artifact:*\n${{ env.LOG_FILE }} (download from run page)"
                     }
                   ]
                 },
