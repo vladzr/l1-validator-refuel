@@ -7,6 +7,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   refuel-testnet:
@@ -22,7 +25,7 @@ jobs:
       BALANCE_THRESHOLD: '0.1'
       REFILL_AMOUNT: '0.2'
       UPTIME_THRESHOLD: '80'
-      USE_UPTIME_FILTER: 'true'
+      USE_UPTIME_FILTER: 'false'
       UPTIME_API: 'https://nodes.testnet.onbeam.com/api/uptime'
       RPC_PCHAIN: ${{ secrets.RPC_PCHAIN }}
       FAUCET_PK: ${{ secrets.FAUCET_PK }}
@@ -73,6 +76,97 @@ jobs:
           name: refuel-testnet-log
           path: ${{ env.LOG_FILE }}
           retention-days: 7
+
+      - name: Set notification time
+        run: echo "NOTIFICATION_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
+
+      - name: Parse log for summary
+        if: always()
+        run: |
+          if [ -f "${{ env.LOG_FILE }}" ]; then
+            errors=$(grep -i -E "error|failed" "${{ env.LOG_FILE }}" | head -n 5 || echo "No errors found")
+            echo "LOG_SUMMARY<<EOF" >> $GITHUB_ENV
+            echo "Errors (first 5 lines):\n$errors" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            echo "LOG_SUMMARY=No log file found" >> $GITHUB_ENV
+          fi
+
+      - name: Send Slack notification
+        if: always()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "*Testnet Refuel Job*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Testnet Refuel Job"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:*\n${{ job.status }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Trigger:*\n${{ github.event_name }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Log Artifact:*\n-${{ env.LOG_FILE }} (download from run page)"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}"
+                  }
+                }
+              ],
+              "color": "${{ job.status == 'success' && '#2ECC71' || job.status == 'failure' && '#E74C3C' || '#F1C40F' }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   refuel-mainnet:
     name: Mainnet Refuel
@@ -139,3 +233,94 @@ jobs:
           name: refuel-mainnet-log
           path: ${{ env.LOG_FILE }}
           retention-days: 7
+
+      - name: Set notification time
+        run: echo "NOTIFICATION_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
+
+      - name: Parse log for summary
+        if: always()
+        run: |
+          if [ -f "${{ env.LOG_FILE }}" ]; then
+            errors=$(grep -i -E "error|failed" "${{ env.LOG_FILE }}" | head -n 5 || echo "No errors found")
+            echo "LOG_SUMMARY<<EOF" >> $GITHUB_ENV
+            echo "Errors (first 5 lines):\n$errors" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            echo "LOG_SUMMARY=No log file found" >> $GITHUB_ENV
+          fi
+
+      - name: Send Slack notification
+        if: always()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "*Mainnet Refuel Job*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Mainnet Refuel Job"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:*\n${{ job.status }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Trigger:*\n${{ github.event_name }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Log Artifact:*\n${{ env.LOG_FILE }} (download from run page)"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}"
+                  }
+                }
+              ],
+              "color": "${{ job.status == 'success' && '#2ECC71' || job.status == 'failure' && '#E74C3C' || '#F1C40F' }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
