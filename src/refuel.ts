@@ -73,6 +73,8 @@ export const handleValidator = async (validation: ValidationInfo) => {
   try {
     const minValidatorBalance = toPChainWei(config.validatorBalanceThreshold);
 
+    await wait(250);
+
     // get validator info incl. balance by validation ID
     let validator: pvm.L1ValidatorDetails;
     try {
