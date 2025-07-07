@@ -32,7 +32,21 @@ const increaseValidatorBalance = async (validationId: string) => {
     addresses: [faucetPChainAddress],
   });
   const feeState = await pvmApi.getFeeState();
-  const context = await Context.getContextFromURI(config.pChainRpcHost);
+
+  let context;
+  try {
+    context = await Context.getContextFromURI(config.pChainRpcHost);
+  } catch (e) {
+    console.error(
+      `Failed to fetch context from P-Chain RPC: ${config.pChainRpcHost}`,
+    );
+    if (e instanceof Error) {
+      console.error('Error message:', e.message);
+    } else {
+      console.error('Unexpected error:', e);
+    }
+    throw e;
+  }
 
   const tx = pvm.e.newIncreaseL1ValidatorBalanceTx(
     {
