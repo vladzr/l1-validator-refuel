@@ -25,7 +25,7 @@ jobs:
       BALANCE_THRESHOLD: '0.1'
       REFILL_AMOUNT: '0.2'
       UPTIME_THRESHOLD: '80'
-      USE_UPTIME_FILTER: 'false'
+      USE_UPTIME_FILTER: 'true'
       UPTIME_API: 'https://nodes.testnet.onbeam.com/api/uptime'
       RPC_PCHAIN: ${{ secrets.RPC_PCHAIN }}
       FAUCET_PK: ${{ secrets.FAUCET_PK }}
