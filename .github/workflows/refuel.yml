@@ -102,7 +102,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": ":white_check_mark: ${{ job.name }} Success",
+              "text": ":white_check_mark: ${{ env.CHAIN_ID }} Refuel Success",
               "blocks": [
                 {
                   "type": "header",
@@ -260,7 +260,7 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": ":white_check_mark: ${{ job.name }} Success",
+              "text": ":white_check_mark: ${{ env.CHAIN_ID }} Refuel Success",
               "blocks": [
                 {
                   "type": "header",
