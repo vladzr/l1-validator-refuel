@@ -7,22 +7,45 @@ const { config, pvmApi, faucetPChainAddress, faucetPK, chainId } = getConfig();
 
 // gets current validation info for all validators
 const getValidationInfo = async (): Promise<ValidationInfo[]> => {
-  // query validation info.
-  const request = await fetch(config.uptimeApiUrl);
+  const url = `${config.evmChainRpcHost}/ext/bc/${config.blockchainId}/validators`;
+
+  const payload = {
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'validators.getCurrentValidators',
+    params: {},
+  };
+
+  let request;
+  try {
+    request = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    throw new Error(
+      `Failed to fetch validators from AvalancheGo RPC at ${url}: ${e}`,
+    );
+  }
 
   if (!request.ok) {
     throw new Error(
       `Failed to fetch validator data - Error ${request.status}: ${request.statusText}`,
     );
   }
+
   const response = await request.json();
-  if (!response.validators?.length) {
+
+  if (!response.result?.validators?.length) {
     throw new Error(
-      `No validators found, API response: ${JSON.stringify(response, undefined, 2)}`,
+      `No validators found, RPC response: ${JSON.stringify(response, undefined, 2)}`,
     );
   }
 
-  return response.validators;
+  return response.result.validators;
 };
 
 // tops up validator

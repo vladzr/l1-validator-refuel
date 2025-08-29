@@ -2,7 +2,6 @@ export type ChainConfig = {
   testnet?: boolean;
   pChainRpcHost: string;
   pChainTxDelay: number;
-  uptimeApiUrl: string;
   validatorBalanceThreshold: number;
   validatorBalanceTopUp: number;
   validatorDelay: number;
@@ -11,6 +10,8 @@ export type ChainConfig = {
   faucetBalanceThresholdWarn: number;
   faucetBalanceThresholdError: number;
   useValidatorUptimeFilter: boolean;
+  evmChainRpcHost?: string;
+  blockchainId: string;
 };
 
 export type ValidationInfo = {
