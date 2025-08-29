@@ -100,11 +100,11 @@ jobs:
         uses: slackapi/slack-github-action@v2
         with:
           webhook-type: incoming-webhook
-          payload: >
-              ${{
+          payload: >-
+            ${{
               job.status == 'success'
-              && format('{ "text": "*{0} Success*", "blocks": [{ "type": "header", "text": { "type": "plain_text", "text": "{0} Success" } }] }', job.name)
-              || format(`{{
+              && format('{ "text": "*{0} Success*", "blocks": [{{ "type": "header", "text": {{ "type": "plain_text", "text": "{0} Success" }} }}] }', job.name)
+              || format('{{
                 "text": "*{0}*\nStatus: {1}\nRepository: {2}\nRun: <{3}/{2}/actions/runs/{4}|View Run and Artifacts>\nCommit: <{3}/{2}/commit/{5}|{5} - {6}>\nTrigger: {7}\nLog Artifact: {8} (download from run page)\nTime: {9}\n{10}",
                 "blocks": [
                   {{ "type": "header", "text": {{ "type": "plain_text", "text": "{0}" }} }},
@@ -121,7 +121,7 @@ jobs:
                   {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Time:*\n{9}" }} }},
                   {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Log Summary:*\n{10}" }} }}
                 ]
-                }}`,
+              }}',
                 job.name,
                 job.status,
                 github.repository,
@@ -134,7 +134,7 @@ jobs:
                 env.NOTIFICATION_TIME,
                 env.LOG_SUMMARY
               )
-              }}
+            }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -227,11 +227,11 @@ jobs:
         uses: slackapi/slack-github-action@v2
         with:
           webhook-type: incoming-webhook
-          payload: >
-              ${{
+          payload: >-
+            ${{
               job.status == 'success'
-              && format('{ "text": "*{0} Success*", "blocks": [{ "type": "header", "text": { "type": "plain_text", "text": "{0} Success" } }] }', job.name)
-              || format(`{{
+              && format('{ "text": "*{0} Success*", "blocks": [{{ "type": "header", "text": {{ "type": "plain_text", "text": "{0} Success" }} }}] }', job.name)
+              || format('{{
                 "text": "*{0}*\nStatus: {1}\nRepository: {2}\nRun: <{3}/{2}/actions/runs/{4}|View Run and Artifacts>\nCommit: <{3}/{2}/commit/{5}|{5} - {6}>\nTrigger: {7}\nLog Artifact: {8} (download from run page)\nTime: {9}\n{10}",
                 "blocks": [
                   {{ "type": "header", "text": {{ "type": "plain_text", "text": "{0}" }} }},
@@ -248,7 +248,7 @@ jobs:
                   {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Time:*\n{9}" }} }},
                   {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Log Summary:*\n{10}" }} }}
                 ]
-                }}`,
+              }}',
                 job.name,
                 job.status,
                 github.repository,
@@ -261,6 +261,6 @@ jobs:
                 env.NOTIFICATION_TIME,
                 env.LOG_SUMMARY
               )
-              }}
+            }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
