@@ -106,7 +106,7 @@ jobs:
               "blocks": [
                 {
                   "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ job.name }} Success" }
+                  "text": { "type": "plain_text", "text": "${{ env.CHAIN_ID }} Refuel Success" }
                 },
                 {
                   "type": "section",
@@ -264,7 +264,7 @@ jobs:
               "blocks": [
                 {
                   "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ job.name }} Success" }
+                  "text": { "type": "plain_text", "text": "${{ env.CHAIN_ID }} Refuel Success" }
                 },
                 {
                   "type": "section",
