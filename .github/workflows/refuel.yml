@@ -95,46 +95,77 @@ jobs:
             echo "LOG_SUMMARY=No log file found" >> $GITHUB_ENV
           fi
 
-      - name: Send Slack notification
-        if: always()
+      - name: Send Slack success
+        if: success()
         uses: slackapi/slack-github-action@v2
         with:
           webhook-type: incoming-webhook
-          payload: >-
-            ${{
-              job.status == 'success'
-              && format('{ "text": "*{0} Success*", "blocks": [{{ "type": "header", "text": {{ "type": "plain_text", "text": "{0} Success" }} }}] }', job.name)
-              || format('{{
-                "text": "*{0}*\nStatus: {1}\nRepository: {2}\nRun: <{3}/{2}/actions/runs/{4}|View Run and Artifacts>\nCommit: <{3}/{2}/commit/{5}|{5} - {6}>\nTrigger: {7}\nLog Artifact: {8} (download from run page)\nTime: {9}\n{10}",
-                "blocks": [
-                  {{ "type": "header", "text": {{ "type": "plain_text", "text": "{0}" }} }},
-                  {{ "type": "section", "fields": [
-                    {{ "type": "mrkdwn", "text": "*Status:*\n{1}" }},
-                    {{ "type": "mrkdwn", "text": "*Trigger:*\n{7}" }}
-                  ] }},
-                  {{ "type": "section", "fields": [
-                    {{ "type": "mrkdwn", "text": "*Repository:*\n{2}" }},
-                    {{ "type": "mrkdwn", "text": "*Log Artifact:*\n{8} (download from run page)" }}
-                  ] }},
-                  {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Run:*\n<{3}/{2}/actions/runs/{4}|View Run and Artifacts>" }} }},
-                  {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Commit:*\n<{3}/{2}/commit/{5}|{5} - {6}>" }} }},
-                  {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Time:*\n{9}" }} }},
-                  {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Log Summary:*\n{10}" }} }}
-                ]
-              }}',
-                job.name,
-                job.status,
-                github.repository,
-                github.server_url,
-                github.run_id,
-                github.sha,
-                github.event.head_commit.message || github.event.pull_request.title,
-                github.event_name,
-                env.LOG_FILE,
-                env.NOTIFICATION_TIME,
-                env.LOG_SUMMARY
-              )
-            }}
+          payload: |
+            {
+              "text": ":white_check_mark: ${{ job.name }} Success",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": { "type": "plain_text", "text": "${{ job.name }} Success" }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send Slack failure
+        if: failure() || cancelled()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "*${{ job.name }}*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": { "type": "plain_text", "text": "${{ job.name }}" }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Status:*\n${{ job.status }}" },
+                    { "type": "mrkdwn", "text": "*Trigger:*\n${{ github.event_name }}" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
+                    { "type": "mrkdwn", "text": "*Log Artifact:*\n${{ env.LOG_FILE }} (download from run page)" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}" }
+                }
+              ],
+              "color": "${{ job.status == 'success' && '#2ECC71' || job.status == 'failure' && '#E74C3C' || '#F1C40F' }}"
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
@@ -222,45 +253,76 @@ jobs:
             echo "LOG_SUMMARY=No log file found" >> $GITHUB_ENV
           fi
 
-      - name: Send Slack notification
-        if: always()
+      - name: Send Slack success
+        if: success()
         uses: slackapi/slack-github-action@v2
         with:
           webhook-type: incoming-webhook
-          payload: >-
-            ${{
-              job.status == 'success'
-              && format('{ "text": "*{0} Success*", "blocks": [{{ "type": "header", "text": {{ "type": "plain_text", "text": "{0} Success" }} }}] }', job.name)
-              || format('{{
-                "text": "*{0}*\nStatus: {1}\nRepository: {2}\nRun: <{3}/{2}/actions/runs/{4}|View Run and Artifacts>\nCommit: <{3}/{2}/commit/{5}|{5} - {6}>\nTrigger: {7}\nLog Artifact: {8} (download from run page)\nTime: {9}\n{10}",
-                "blocks": [
-                  {{ "type": "header", "text": {{ "type": "plain_text", "text": "{0}" }} }},
-                  {{ "type": "section", "fields": [
-                    {{ "type": "mrkdwn", "text": "*Status:*\n{1}" }},
-                    {{ "type": "mrkdwn", "text": "*Trigger:*\n{7}" }}
-                  ] }},
-                  {{ "type": "section", "fields": [
-                    {{ "type": "mrkdwn", "text": "*Repository:*\n{2}" }},
-                    {{ "type": "mrkdwn", "text": "*Log Artifact:*\n{8} (download from run page)" }}
-                  ] }},
-                  {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Run:*\n<{3}/{2}/actions/runs/{4}|View Run and Artifacts>" }} }},
-                  {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Commit:*\n<{3}/{2}/commit/{5}|{5} - {6}>" }} }},
-                  {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Time:*\n{9}" }} }},
-                  {{ "type": "section", "text": {{ "type": "mrkdwn", "text": "*Log Summary:*\n{10}" }} }}
-                ]
-              }}',
-                job.name,
-                job.status,
-                github.repository,
-                github.server_url,
-                github.run_id,
-                github.sha,
-                github.event.head_commit.message || github.event.pull_request.title,
-                github.event_name,
-                env.LOG_FILE,
-                env.NOTIFICATION_TIME,
-                env.LOG_SUMMARY
-              )
-            }}
+          payload: |
+            {
+              "text": ":white_check_mark: ${{ job.name }} Success",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": { "type": "plain_text", "text": "${{ job.name }} Success" }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send Slack failure
+        if: failure() || cancelled()
+        uses: slackapi/slack-github-action@v2
+        with:
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "*${{ job.name }}*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": { "type": "plain_text", "text": "${{ job.name }}" }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Status:*\n${{ job.status }}" },
+                    { "type": "mrkdwn", "text": "*Trigger:*\n${{ github.event_name }}" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
+                    { "type": "mrkdwn", "text": "*Log Artifact:*\n${{ env.LOG_FILE }} (download from run page)" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}" }
+                }
+              ],
+              "color": "${{ job.status == 'success' && '#2ECC71' || job.status == 'failure' && '#E74C3C' || '#F1C40F' }}"
+            }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
