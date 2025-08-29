@@ -26,7 +26,7 @@ jobs:
       REFILL_AMOUNT: '0.2'
       UPTIME_THRESHOLD: '80'
       USE_UPTIME_FILTER: 'true'
-      UPTIME_API: 'https://nodes.testnet.onbeam.com/api/uptime'
+      RPC_EVM: ${{ secrets.RPC_EVM }}
       RPC_PCHAIN: ${{ secrets.RPC_PCHAIN }}
       FAUCET_PK: ${{ secrets.FAUCET_PK }}
       FAUCET_PCHAIN_ADDRESS: ${{ vars.FAUCET_PCHAIN_ADDRESS }}
@@ -68,7 +68,7 @@ jobs:
           set -e
           log_file="refuel-testnet-$(date +%Y%m%d-%H%M%S).log"
 
-          echo "Using UPTIME_API=$UPTIME_API"
+          echo "Using RPC_EVM=$RPC_EVM"
           echo "Using RPC_PCHAIN=$RPC_PCHAIN"
 
           pnpm local 2>&1 | tee "$log_file"
@@ -184,9 +184,9 @@ jobs:
       REFILL_AMOUNT: '0.4'
       UPTIME_THRESHOLD: '80'
       USE_UPTIME_FILTER: 'false'
-      UPTIME_API: 'https://nodes.onbeam.com/api/uptime'
       FAUCET_BALANCE_WARN: '250'
       FAUCET_BALANCE_ERROR: '10'
+      RPC_EVM: ${{secrets.RPC_EVM }}
       RPC_PCHAIN: ${{ secrets.RPC_PCHAIN }}
       FAUCET_PK: ${{ secrets.FAUCET_PK }}
       FAUCET_PCHAIN_ADDRESS: ${{ vars.FAUCET_PCHAIN_ADDRESS }}
@@ -228,7 +228,7 @@ jobs:
           set -e
           log_file="refuel-mainnet-$(date +%Y%m%d-%H%M%S).log"
 
-          echo "Using UPTIME_API=$UPTIME_API"
+          echo "Using RPC_EVM=$RPC_EVM"
           echo "Using RPC_PCHAIN=$RPC_PCHAIN"
 
           pnpm local 2>&1 | tee "$log_file"
