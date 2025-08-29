@@ -65,7 +65,12 @@ jobs:
 
       - name: Run testnet refuel
         run: |
+          set -e
           log_file="refuel-testnet-$(date +%Y%m%d-%H%M%S).log"
+
+          echo "Using UPTIME_API=$UPTIME_API"
+          echo "Using RPC_PCHAIN=$RPC_PCHAIN"
+
           pnpm local 2>&1 | tee "$log_file"
           echo "LOG_FILE=$log_file" >> $GITHUB_ENV
 
@@ -85,9 +90,7 @@ jobs:
         run: |
           if [ -f "${{ env.LOG_FILE }}" ]; then
             errors=$(grep -i -E "error|failed" "${{ env.LOG_FILE }}" | head -n 5 || echo "No errors found")
-            echo "LOG_SUMMARY<<EOF" >> $GITHUB_ENV
-            echo "Errors (first 5 lines):\n$errors" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
+            echo "LOG_SUMMARY=Errors (first 5 lines):\n$errors" >> $GITHUB_ENV
           else
             echo "LOG_SUMMARY=No log file found" >> $GITHUB_ENV
           fi
@@ -222,7 +225,12 @@ jobs:
 
       - name: Run mainnet refuel
         run: |
+          set -e
           log_file="refuel-mainnet-$(date +%Y%m%d-%H%M%S).log"
+
+          echo "Using UPTIME_API=$UPTIME_API"
+          echo "Using RPC_PCHAIN=$RPC_PCHAIN"
+
           pnpm local 2>&1 | tee "$log_file"
           echo "LOG_FILE=$log_file" >> $GITHUB_ENV
 
@@ -242,9 +250,7 @@ jobs:
         run: |
           if [ -f "${{ env.LOG_FILE }}" ]; then
             errors=$(grep -i -E "error|failed" "${{ env.LOG_FILE }}" | head -n 5 || echo "No errors found")
-            echo "LOG_SUMMARY<<EOF" >> $GITHUB_ENV
-            echo "Errors (first 5 lines):\n$errors" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
+            echo "LOG_SUMMARY=Errors (first 5 lines):\n$errors" >> $GITHUB_ENV
           else
             echo "LOG_SUMMARY=No log file found" >> $GITHUB_ENV
           fi
