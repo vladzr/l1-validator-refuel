@@ -89,10 +89,19 @@ jobs:
         if: always()
         run: |
           if [ -f "${{ env.LOG_FILE }}" ]; then
-            errors=$(grep -i -E "error|failed" "${{ env.LOG_FILE }}" | head -n 5 || echo "No errors found")
-            echo "LOG_SUMMARY=Errors (first 5 lines):\n$errors" >> $GITHUB_ENV
+            # Try to grab the first 5 error-ish lines; don't fail the step if none
+            errors="$(grep -i -E 'error|failed' "${{ env.LOG_FILE }}" | head -n 5 || true)"
+            if [ -z "$errors" ]; then
+              errors="No errors found"
+            fi
+            {
+              echo 'LOG_SUMMARY<<EOF'
+              echo "Errors (first 5 lines):"
+              echo "$errors"
+              echo 'EOF'
+            } >> "$GITHUB_ENV"
           else
-            echo "LOG_SUMMARY=No log file found" >> $GITHUB_ENV
+            echo 'LOG_SUMMARY=No log file found' >> "$GITHUB_ENV"
           fi
 
       - name: Send Slack success
