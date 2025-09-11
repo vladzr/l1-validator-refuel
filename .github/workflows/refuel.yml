@@ -87,22 +87,30 @@ jobs:
 
       - name: Parse log for summary
         if: always()
+        shell: bash
         run: |
           if [ -f "${{ env.LOG_FILE }}" ]; then
-            # Try to grab the first 5 error-ish lines; don't fail the step if none
+            # Do not fail if grep finds nothing
             errors="$(grep -i -E 'error|failed' "${{ env.LOG_FILE }}" | head -n 5 || true)"
             if [ -z "$errors" ]; then
               errors="No errors found"
             fi
             {
               echo 'LOG_SUMMARY<<EOF'
-              echo "Errors (first 5 lines):"
+              echo 'Errors (first 5 lines):'
               echo "$errors"
               echo 'EOF'
             } >> "$GITHUB_ENV"
           else
             echo 'LOG_SUMMARY=No log file found' >> "$GITHUB_ENV"
           fi
+
+      - name: Debug LOG_SUMMARY
+        if: always()
+        run: |
+          echo "----- LOG_SUMMARY begin -----"
+          printf "%s\n" "${LOG_SUMMARY}"
+          echo "----- LOG_SUMMARY end -----"
 
       - name: Send Slack success
         if: success()
