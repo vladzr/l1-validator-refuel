@@ -5,11 +5,9 @@ on:
   schedule:
     - cron: '0 5 * * *'
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   refuel-testnet:
@@ -19,6 +17,7 @@ jobs:
     timeout-minutes: 15
 
     env:
+      NETWORK: Testnet
       CHAIN_ID: '13337'
       DELAY_PCHAIN_TX: '5000'
       DELAY_VALIDATOR: '1000'
@@ -57,44 +56,48 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prod=false
 
+      # Optional; remove if not needed
       - name: Verify dependencies
         run: pnpm list --dev
 
       - name: Build project
         run: pnpm build
 
-      - name: Run testnet refuel
+      - name: Run refuel
+        shell: bash
         run: |
-          set -e
-          log_file="refuel-testnet-$(date +%Y%m%d-%H%M%S).log"
+          set -eo pipefail
+          log_file="refuel-${NETWORK,,}-$(date +%Y%m%d-%H%M%S).log"
+          # export early so later steps always have a value
+          echo "LOG_FILE=$log_file" >> "$GITHUB_ENV"
+          : > "$log_file" # pre-create
 
-          echo "Using RPC_EVM=$RPC_EVM"
-          echo "Using RPC_PCHAIN=$RPC_PCHAIN"
+          # Avoid leaking secrets; just confirm presence
+          [[ -n "$RPC_EVM" ]] && echo "RPC_EVM: present" || echo "RPC_EVM: MISSING"
+          [[ -n "$RPC_PCHAIN" ]] && echo "RPC_PCHAIN: present" || echo "RPC_PCHAIN: MISSING"
 
-          pnpm local 2>&1 | tee "$log_file"
-          echo "LOG_FILE=$log_file" >> $GITHUB_ENV
+          pnpm local 2>&1 | tee -a "$log_file"
 
-      - name: Upload testnet log
+      - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: refuel-testnet-log
+          name: refuel-${{ env.NETWORK }}-log
           path: ${{ env.LOG_FILE }}
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Set notification time
-        run: echo "NOTIFICATION_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
+        shell: bash
+        run: echo "NOTIFICATION_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_ENV"
 
       - name: Parse log for summary
         if: always()
         shell: bash
         run: |
-          if [ -f "${{ env.LOG_FILE }}" ]; then
-            # Do not fail if grep finds nothing
+          if [ -n "${{ env.LOG_FILE }}" ] && [ -f "${{ env.LOG_FILE }}" ]; then
             errors="$(grep -i -E 'error|failed' "${{ env.LOG_FILE }}" | head -n 5 || true)"
-            if [ -z "$errors" ]; then
-              errors="No errors found"
-            fi
+            [ -z "$errors" ] && errors="No errors found"
             {
               echo 'LOG_SUMMARY<<EOF'
               echo 'Errors (first 5 lines):'
@@ -107,9 +110,10 @@ jobs:
 
       - name: Debug LOG_SUMMARY
         if: always()
+        shell: bash
         run: |
           echo "----- LOG_SUMMARY begin -----"
-          printf "%s\n" "${LOG_SUMMARY}"
+          printf '%s\n' "${LOG_SUMMARY}"
           echo "----- LOG_SUMMARY end -----"
 
       - name: Send Slack success
@@ -119,11 +123,11 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": ":white_check_mark: ${{ env.CHAIN_ID }} Refuel Success",
+              "text": ":white_check_mark: ${{ env.NETWORK }} Refuel Success",
               "blocks": [
                 {
                   "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ env.CHAIN_ID }} Refuel Success" }
+                  "text": { "type": "plain_text", "text": "${{ env.NETWORK }} Refuel Success" }
                 },
                 {
                   "type": "section",
@@ -144,42 +148,23 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "*${{ job.name }}*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
+              "text": "*${{ env.NETWORK }} Refuel*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
               "blocks": [
-                {
-                  "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ job.name }}" }
-                },
-                {
-                  "type": "section",
-                  "fields": [
+                { "type": "header", "text": { "type": "plain_text", "text": "${{ env.NETWORK }} Refuel" } },
+                { "type": "section", "fields": [
                     { "type": "mrkdwn", "text": "*Status:*\n${{ job.status }}" },
                     { "type": "mrkdwn", "text": "*Trigger:*\n${{ github.event_name }}" }
                   ]
                 },
-                {
-                  "type": "section",
-                  "fields": [
+                { "type": "section", "fields": [
                     { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
                     { "type": "mrkdwn", "text": "*Log Artifact:*\n${{ env.LOG_FILE }} (download from run page)" }
                   ]
                 },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" }
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" }
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}" }
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}" }
-                }
+                { "type": "section", "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" } },
+                { "type": "section", "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" } },
+                { "type": "section", "text": { "type": "mrkdwn", "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}" } },
+                { "type": "section", "text": { "type": "mrkdwn", "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}" } }
               ],
               "color": "${{ job.status == 'success' && '#2ECC71' || job.status == 'failure' && '#E74C3C' || '#F1C40F' }}"
             }
@@ -193,6 +178,7 @@ jobs:
     timeout-minutes: 15
 
     env:
+      NETWORK: Mainnet
       CHAIN_ID: '4337'
       DELAY_PCHAIN_TX: '5000'
       BALANCE_THRESHOLD: '0.2'
@@ -201,7 +187,7 @@ jobs:
       USE_UPTIME_FILTER: 'false'
       FAUCET_BALANCE_WARN: '250'
       FAUCET_BALANCE_ERROR: '10'
-      RPC_EVM: ${{secrets.RPC_EVM }}
+      RPC_EVM: ${{ secrets.RPC_EVM }}
       RPC_PCHAIN: ${{ secrets.RPC_PCHAIN }}
       FAUCET_PK: ${{ secrets.FAUCET_PK }}
       FAUCET_PCHAIN_ADDRESS: ${{ vars.FAUCET_PCHAIN_ADDRESS }}
@@ -238,38 +224,39 @@ jobs:
       - name: Build project
         run: pnpm build
 
-      - name: Run mainnet refuel
+      - name: Run refuel
+        shell: bash
         run: |
-          set -e
-          log_file="refuel-mainnet-$(date +%Y%m%d-%H%M%S).log"
+          set -eo pipefail
+          log_file="refuel-${NETWORK,,}-$(date +%Y%m%d-%H%M%S).log"
+          echo "LOG_FILE=$log_file" >> "$GITHUB_ENV"
+          : > "$log_file"
 
-          echo "Using RPC_EVM=$RPC_EVM"
-          echo "Using RPC_PCHAIN=$RPC_PCHAIN"
+          [[ -n "$RPC_EVM" ]] && echo "RPC_EVM: present" || echo "RPC_EVM: MISSING"
+          [[ -n "$RPC_PCHAIN" ]] && echo "RPC_PCHAIN: present" || echo "RPC_PCHAIN: MISSING"
 
-          pnpm local 2>&1 | tee "$log_file"
-          echo "LOG_FILE=$log_file" >> $GITHUB_ENV
+          pnpm local 2>&1 | tee -a "$log_file"
 
-      - name: Upload mainnet log
+      - name: Upload log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: refuel-mainnet-log
+          name: refuel-${{ env.NETWORK }}-log
           path: ${{ env.LOG_FILE }}
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Set notification time
-        run: echo "NOTIFICATION_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_ENV
+        shell: bash
+        run: echo "NOTIFICATION_TIME=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> "$GITHUB_ENV"
 
       - name: Parse log for summary
         if: always()
         shell: bash
         run: |
-          if [ -f "${{ env.LOG_FILE }}" ]; then
-            # Do not fail if grep finds nothing
+          if [ -n "${{ env.LOG_FILE }}" ] && [ -f "${{ env.LOG_FILE }}" ]; then
             errors="$(grep -i -E 'error|failed' "${{ env.LOG_FILE }}" | head -n 5 || true)"
-            if [ -z "$errors" ]; then
-              errors="No errors found"
-            fi
+            [ -z "$errors" ] && errors="No errors found"
             {
               echo 'LOG_SUMMARY<<EOF'
               echo 'Errors (first 5 lines):'
@@ -282,10 +269,12 @@ jobs:
 
       - name: Debug LOG_SUMMARY
         if: always()
+        shell: bash
         run: |
           echo "----- LOG_SUMMARY begin -----"
-          printf "%s\n" "${LOG_SUMMARY}"
+          printf '%s\n' "${LOG_SUMMARY}"
           echo "----- LOG_SUMMARY end -----"
+
       - name: Send Slack success
         if: success()
         uses: slackapi/slack-github-action@v2
@@ -293,11 +282,11 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": ":white_check_mark: ${{ env.CHAIN_ID }} Refuel Success",
+              "text": ":white_check_mark: ${{ env.NETWORK }} Refuel Success",
               "blocks": [
                 {
                   "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ env.CHAIN_ID }} Refuel Success" }
+                  "text": { "type": "plain_text", "text": "${{ env.NETWORK }} Refuel Success" }
                 },
                 {
                   "type": "section",
@@ -318,42 +307,23 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "*${{ job.name }}*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
+              "text": "*${{ env.NETWORK }} Refuel*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
               "blocks": [
-                {
-                  "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ job.name }}" }
-                },
-                {
-                  "type": "section",
-                  "fields": [
+                { "type": "header", "text": { "type": "plain_text", "text": "${{ env.NETWORK }} Refuel" } },
+                { "type": "section", "fields": [
                     { "type": "mrkdwn", "text": "*Status:*\n${{ job.status }}" },
                     { "type": "mrkdwn", "text": "*Trigger:*\n${{ github.event_name }}" }
                   ]
                 },
-                {
-                  "type": "section",
-                  "fields": [
+                { "type": "section", "fields": [
                     { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
                     { "type": "mrkdwn", "text": "*Log Artifact:*\n${{ env.LOG_FILE }} (download from run page)" }
                   ]
                 },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" }
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" }
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}" }
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}" }
-                }
+                { "type": "section", "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" } },
+                { "type": "section", "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" } },
+                { "type": "section", "text": { "type": "mrkdwn", "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}" } },
+                { "type": "section", "text": { "type": "mrkdwn", "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}" } }
               ],
               "color": "${{ job.status == 'success' && '#2ECC71' || job.status == 'failure' && '#E74C3C' || '#F1C40F' }}"
             }
