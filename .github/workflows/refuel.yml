@@ -120,6 +120,7 @@ jobs:
             echo 'ERROR_COUNT=1' >> "$GITHUB_ENV"
           fi
 
+      # ✅ Success: short + reliable
       - name: Send Slack success
         if: always() && env.HAS_ERRORS != 'true' && !failure() && !cancelled()
         uses: slackapi/slack-github-action@v2
@@ -127,69 +128,25 @@ jobs:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": ":white_check_mark: ${{ env.CHAIN_ID }} Refuel Success",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ env.CHAIN_ID }} Refuel Success" }
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
-                }
-              ]
+              "text": ":white_check_mark: ${{ job.name }} Success — <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Open run>",
+              "unfurl_links": false
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      - name: Send Slack failure
+      # ❌ Failure/Cancelled: compact + code block + truncated summary
+      - name: Send Slack failure (compact)
         if: always() && (env.HAS_ERRORS == 'true' || failure() || cancelled())
         uses: slackapi/slack-github-action@v2
         with:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "*${{ job.name }}*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
-              "blocks": [
-                {
-                  "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ job.name }}" }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    { "type": "mrkdwn", "text": "*Status:*\n${{ job.status }}" },
-                    { "type": "mrkdwn", "text": "*Trigger:*\n${{ github.event_name }}" }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
-                    { "type": "mrkdwn", "text": "*Log Artifact:*\n${{ env.LOG_FILE }} (download from run page)" }
-                  ]
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" }
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" }
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}" }
-                },
-                {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}" }
-                }
-              ],
-              "color": "${{ job.status == 'success' && '#2ECC71' || job.status == 'failure' && '#E74C3C' || '#F1C40F' }}"
+              "text": ":x: ${{ job.name }} had errors (count=${{ env.ERROR_COUNT || 0 }}).\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|open>\nLog: `${{ env.LOG_FILE }}`\n```${
+                (env.LOG_SUMMARY || 'No log summary available')
+                  .slice(0, 1400)
+              }```",
+              "unfurl_links": false
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
