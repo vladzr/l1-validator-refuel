@@ -22,7 +22,7 @@ jobs:
       CHAIN_ID: '13337'
       DELAY_PCHAIN_TX: '1000'
       DELAY_VALIDATOR: '1000'
-      BALANCE_THRESHOLD: '0.25'
+      BALANCE_THRESHOLD: '0.3'
       REFILL_AMOUNT: '0.2'
       UPTIME_THRESHOLD: '80'
       USE_UPTIME_FILTER: 'true'
@@ -265,7 +265,7 @@ jobs:
     env:
       CHAIN_ID: '4337'
       DELAY_PCHAIN_TX: '1000'
-      BALANCE_THRESHOLD: '0.25'
+      BALANCE_THRESHOLD: '0.3'
       REFILL_AMOUNT: '0.4'
       UPTIME_THRESHOLD: '80'
       USE_UPTIME_FILTER: 'false'
