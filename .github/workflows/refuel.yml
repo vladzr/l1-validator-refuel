@@ -120,35 +120,140 @@ jobs:
             echo 'ERROR_COUNT=1' >> "$GITHUB_ENV"
           fi
 
-      # ✅ Success: short + reliable
-      - name: Send Slack success
+      - name: Prepare Slack-safe summary
+        if: always()
+        shell: bash
+        run: |
+          summary="${LOG_SUMMARY:-No log summary available}"
+
+          # Escape backticks so we don't break the ``` code fence
+          summary="${summary//\`/\\\`}"
+
+          # Truncate to keep payload safe for webhooks (adjust if you like)
+          max=3000
+          if [ ${#summary} -gt $max ]; then
+            summary="${summary:0:$max}…"
+          fi
+
+          {
+            echo 'LOG_SUMMARY_SLACK<<EOF'
+            printf '%s\n' "$summary"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Send Slack success (detailed)
         if: always() && env.HAS_ERRORS != 'true' && !failure() && !cancelled()
         uses: slackapi/slack-github-action@v2
         with:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": ":white_check_mark: ${{ job.name }} Success — <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Open run>",
-              "unfurl_links": false
+              "text": ":white_check_mark: ${{ job.name }} Success",
+              "unfurl_links": false,
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": { "type": "plain_text", "text": "${{ job.name }} Success" }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Status:*\nsuccess" },
+                    { "type": "mrkdwn", "text": "*Trigger:*\n${{ github.event_name }}" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
+                    { "type": "mrkdwn", "text": "*Chain ID:*\n${{ env.CHAIN_ID }}" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    { "type": "mrkdwn", "text": "*Time:* ${{ env.NOTIFICATION_TIME }}" }
+                  ]
+                }
+              ]
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      # ❌ Failure/Cancelled: compact + code block + truncated summary
-      - name: Send Slack failure (compact)
+      - name: Send Slack failure (detailed)
         if: always() && (env.HAS_ERRORS == 'true' || failure() || cancelled())
         uses: slackapi/slack-github-action@v2
         with:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": ":x: ${{ job.name }} had errors (count=${{ env.ERROR_COUNT || 0 }}).\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|open>\nLog: `${{ env.LOG_FILE }}`\n```${
-                (env.LOG_SUMMARY || 'No log summary available')
-                  .slice(0, 1400)
-              }```",
-              "unfurl_links": false
+              "text": ":x: ${{ job.name }} Failed — see details below",
+              "unfurl_links": false,
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": { "type": "plain_text", "text": "${{ job.name }} Failure" }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Status:*\n${{ job.status }}" },
+                    { "type": "mrkdwn", "text": "*Trigger:*\n${{ github.event_name }}" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
+                    { "type": "mrkdwn", "text": "*Chain ID:*\n${{ env.CHAIN_ID }}" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Errors found:*\n${{ env.ERROR_COUNT || 0 }}" },
+                    { "type": "mrkdwn", "text": "*Log Artifact:*\n`${{ env.LOG_FILE }}`" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    { "type": "mrkdwn", "text": "*Time:* ${{ env.NOTIFICATION_TIME }}" }
+                  ]
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Log Summary (first lines):*\n```${
+                      {LOG_SUMMARY_SLACK}
+                    }```"
+                  }
+                }
+              ]
             }
         env:
+          # Inject the preprocessed, truncated summary via env so we don't blow up JSON/YAML parsing
+          LOG_SUMMARY_SLACK: ${{ env.LOG_SUMMARY_SLACK }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   refuel-mainnet:
@@ -257,43 +362,87 @@ jobs:
             echo 'ERROR_COUNT=1' >> "$GITHUB_ENV"
           fi
 
-      - name: Send Slack success
+      - name: Prepare Slack-safe summary
+        if: always()
+        shell: bash
+        run: |
+          summary="${LOG_SUMMARY:-No log summary available}"
+
+          # Escape backticks so we don't break the ``` code fence
+          summary="${summary//\`/\\\`}"
+
+          # Truncate to keep payload safe for webhooks (adjust if you like)
+          max=3000
+          if [ ${#summary} -gt $max ]; then
+            summary="${summary:0:$max}…"
+          fi
+
+          {
+            echo 'LOG_SUMMARY_SLACK<<EOF'
+            printf '%s\n' "$summary"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Send Slack success (detailed)
         if: always() && env.HAS_ERRORS != 'true' && !failure() && !cancelled()
         uses: slackapi/slack-github-action@v2
         with:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": ":white_check_mark: ${{ env.CHAIN_ID }} Refuel Success",
+              "text": ":white_check_mark: ${{ job.name }} Success",
+              "unfurl_links": false,
               "blocks": [
                 {
                   "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ env.CHAIN_ID }} Refuel Success" }
+                  "text": { "type": "plain_text", "text": "${{ job.name }} Success" }
                 },
                 {
                   "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "Run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>"
-                  }
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Status:*\nsuccess" },
+                    { "type": "mrkdwn", "text": "*Trigger:*\n${{ github.event_name }}" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
+                    { "type": "mrkdwn", "text": "*Chain ID:*\n${{ env.CHAIN_ID }}" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Run:*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>" }
+                },
+                {
+                  "type": "section",
+                  "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    { "type": "mrkdwn", "text": "*Time:* ${{ env.NOTIFICATION_TIME }}" }
+                  ]
                 }
               ]
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      - name: Send Slack failure
+      - name: Send Slack failure (detailed)
         if: always() && (env.HAS_ERRORS == 'true' || failure() || cancelled())
         uses: slackapi/slack-github-action@v2
         with:
           webhook-type: incoming-webhook
           payload: |
             {
-              "text": "*${{ job.name }}*\nStatus: ${{ job.status }}\nRepository: ${{ github.repository }}\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run and Artifacts>\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>\nTrigger: ${{ github.event_name }}\nLog Artifact: ${{ env.LOG_FILE }} (download from run page)\nTime: ${{ env.NOTIFICATION_TIME }}\n${{ env.LOG_SUMMARY }}",
+              "text": ":x: ${{ job.name }} Failed — see details below",
+              "unfurl_links": false,
               "blocks": [
                 {
                   "type": "header",
-                  "text": { "type": "plain_text", "text": "${{ job.name }}" }
+                  "text": { "type": "plain_text", "text": "${{ job.name }} Failure" }
                 },
                 {
                   "type": "section",
@@ -306,7 +455,14 @@ jobs:
                   "type": "section",
                   "fields": [
                     { "type": "mrkdwn", "text": "*Repository:*\n${{ github.repository }}" },
-                    { "type": "mrkdwn", "text": "*Log Artifact:*\n${{ env.LOG_FILE }} (download from run page)" }
+                    { "type": "mrkdwn", "text": "*Chain ID:*\n${{ env.CHAIN_ID }}" }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Errors found:*\n${{ env.ERROR_COUNT || 0 }}" },
+                    { "type": "mrkdwn", "text": "*Log Artifact:*\n`${{ env.LOG_FILE }}`" }
                   ]
                 },
                 {
@@ -318,15 +474,26 @@ jobs:
                   "text": { "type": "mrkdwn", "text": "*Commit:*\n<${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }} - ${{ github.event.head_commit.message || github.event.pull_request.title }}>" }
                 },
                 {
-                  "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Time:*\n${{ env.NOTIFICATION_TIME }}" }
+                  "type": "context",
+                  "elements": [
+                    { "type": "mrkdwn", "text": "*Time:* ${{ env.NOTIFICATION_TIME }}" }
+                  ]
+                },
+                {
+                  "type": "divider"
                 },
                 {
                   "type": "section",
-                  "text": { "type": "mrkdwn", "text": "*Log Summary:*\n${{ env.LOG_SUMMARY }}" }
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Log Summary (first lines):*\n```${
+                      {LOG_SUMMARY_SLACK}
+                    }```"
+                  }
                 }
-              ],
-              "color": "${{ job.status == 'success' && '#2ECC71' || job.status == 'failure' && '#E74C3C' || '#F1C40F' }}"
+              ]
             }
         env:
+          # Inject the preprocessed, truncated summary via env so we don't blow up JSON/YAML parsing
+          LOG_SUMMARY_SLACK: ${{ env.LOG_SUMMARY_SLACK }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
