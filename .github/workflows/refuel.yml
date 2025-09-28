@@ -20,7 +20,7 @@ jobs:
 
     env:
       CHAIN_ID: '13337'
-      DELAY_PCHAIN_TX: '1000'
+      DELAY_PCHAIN_TX: '5000'
       DELAY_VALIDATOR: '1000'
       BALANCE_THRESHOLD: '0.3'
       REFILL_AMOUNT: '0.2'
@@ -126,10 +126,12 @@ jobs:
         run: |
           summary="${LOG_SUMMARY:-No log summary available}"
 
-          # Escape backticks so we don't break the ``` code fence
-          summary="${summary//\`/\\\`}"
+          summary="${summary//\\/\\\\}"    # \  -> \\
+          summary="${summary//\"/\\\"}"    # "  -> \"
+          summary="${summary//\`/\\\`}"    # `  -> \`
+          summary="${summary//$'\r'/}"     # drop CR if any
+          summary="${summary//$'\n'/\\n}"  # NL -> \n
 
-          # Truncate to keep payload safe for webhooks (adjust if you like)
           max=3000
           if [ ${#summary} -gt $max ]; then
             summary="${summary:0:$max}…"
@@ -237,23 +239,17 @@ jobs:
                     { "type": "mrkdwn", "text": "*Time:* ${{ env.NOTIFICATION_TIME }}" }
                   ]
                 },
-                {
-                  "type": "divider"
-                },
+                { "type": "divider" },
                 {
                   "type": "section",
                   "text": {
                     "type": "mrkdwn",
-                    "text": "*Log Summary (first lines):*\n```${
-                      {LOG_SUMMARY_SLACK}
-                    }```"
+                    "text": "*Log Summary (first lines):*\n```${{ env.LOG_SUMMARY_SLACK }}```"
                   }
                 }
               ]
             }
         env:
-          # Inject the preprocessed, truncated summary via env so we don't blow up JSON/YAML parsing
-          LOG_SUMMARY_SLACK: ${{ env.LOG_SUMMARY_SLACK }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   refuel-mainnet:
@@ -264,7 +260,7 @@ jobs:
 
     env:
       CHAIN_ID: '4337'
-      DELAY_PCHAIN_TX: '1000'
+      DELAY_PCHAIN_TX: '5000'
       BALANCE_THRESHOLD: '0.3'
       REFILL_AMOUNT: '0.4'
       UPTIME_THRESHOLD: '80'
@@ -368,10 +364,12 @@ jobs:
         run: |
           summary="${LOG_SUMMARY:-No log summary available}"
 
-          # Escape backticks so we don't break the ``` code fence
-          summary="${summary//\`/\\\`}"
+          summary="${summary//\\/\\\\}"    # \  -> \\
+          summary="${summary//\"/\\\"}"    # "  -> \"
+          summary="${summary//\`/\\\`}"    # `  -> \`
+          summary="${summary//$'\r'/}"     # drop CR if any
+          summary="${summary//$'\n'/\\n}"  # NL -> \n
 
-          # Truncate to keep payload safe for webhooks (adjust if you like)
           max=3000
           if [ ${#summary} -gt $max ]; then
             summary="${summary:0:$max}…"
